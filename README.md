@@ -4,11 +4,7 @@
 
 **Minimal code for PRISM-selected multi-mask membership inference on diffusion language models.**
 
-<a href="./overview.pdf">
-  <img src="./overview.png" alt="JUMP overview" width="900">
-</a>
-
-[Overview PDF](./overview.pdf)
+<img src="./overview.png" alt="JUMP overview" width="900">
 
 </div>
 
@@ -27,10 +23,10 @@ This repository intentionally keeps only the minimal attack/training code needed
 
 ## Setup
 
-Install the dependencies in the same environment used for LLaDA experiments:
+Install dependencies with:
 
 ```bash
-pip install torch transformers accelerate numpy scikit-learn
+pip install -r requirements.txt
 ```
 
 LLaDA checkpoints, tokenizers, PRISM checkpoints, and evaluation manifests are not bundled. Pass them through the CLI arguments below.
@@ -114,12 +110,8 @@ jump/
 │   ├── training/             # PRISM training pipeline
 │   ├── shared/               # metrics, manifests, model loading
 │   └── prism_utils.py        # PRISM head, LoRA, checkpoint helpers
+├── overview.png
 ├── overview.pdf
+├── requirements.txt
 └── README.md
 ```
-
-## Notes
-
-- Top-level scripts are intentionally short wrappers around `jump.core` modules.
-- Paths to model checkpoints, tokenizers, and manifests must be supplied by the user.
-- `overview.png` should be placed at the repository root so the figure renders at the top of this README.
