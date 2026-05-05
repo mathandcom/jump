@@ -1,46 +1,91 @@
-<div align="center">
-
 # JUMP
 
-**Minimal code for PRISM-selected multi-mask membership inference on diffusion language models.**
+Minimal code bundle for the JUMP attack on diffusion language models.
 
-<img src="./overview.png" alt="JUMP overview" width="900">
+Overview:
+- [overview.pdf](./figures/overview.pdf)
+- [![JUMP overview](./figures/overview.png)](./figures/overview.pdf)
 
-</div>
-
----
-
-## What is this?
-
-JUMP is a lightweight research code bundle for evaluating membership inference attacks on diffusion language models. It includes the core code to:
+This folder contains only the core code used to:
 
 - train a PRISM selector on top of an LLaDA backbone,
-- select high-signal clean tokens,
-- run the JUMP multi-mask attack,
-- report attack metrics and diagnostics.
+- compute clean-token selector signals,
+- run the JUMP multi-mask membership-inference attack,
+- share the small model/loading utilities those scripts depend on.
 
-This repository intentionally keeps only the minimal attack/training code needed for reproduction.
+It intentionally excludes paper figures, Slurm launchers, unrelated ablations, and defense-side analysis code.
 
-## Setup
+## Layout
 
-Install dependencies with:
+- `eval_jump.py`
+  - Short CLI entrypoint for attack evaluation.
 
-```bash
-pip install -r requirements.txt
-```
+- `train_prism.py`
+  - Short CLI entrypoint for selector training.
 
-LLaDA checkpoints, tokenizers, PRISM checkpoints, and evaluation manifests are not bundled. Pass them through the CLI arguments below.
+- `core/prism_utils.py`
+  - PRISM model definition and checkpoint utilities.
+  - Includes the LoRA-wrapped selector head and checkpoint loading/saving helpers.
 
-## Train PRISM
+- `core/attack/`
+  - Attack-time modules.
+  - `args.py`: attack CLI arguments
+  - `score_utils.py`: clipping and robust aggregation helpers
+  - `masking.py`: joint multi-mask query construction and score extraction
+  - `hierarchy.py`: grouped/hierarchical refinement helpers
+  - `features.py`: feature construction from target/reference scores
+  - `runner.py`: main attack pipeline
 
-Skip this step if you already have a PRISM checkpoint.
+- `core/selection/`
+  - Clean-sequence selector analysis modules.
+  - `signals.py`: PRISM clean forward signals and target one-hole readout
+  - `features.py`: selector-based feature construction
+  - `runner.py`: selector diagnostic pipeline
+
+- `core/training/`
+  - PRISM selector training modules.
+  - `args.py`: training CLI arguments
+  - `data.py`: local dataset loading and batching
+  - `corruption.py`: corrupted-input construction and supervision sampling
+  - `evaluation.py`: validation logic
+  - `runner.py`: main training loop
+
+- `core/shared/`
+  - Shared lightweight utilities:
+    - metrics
+    - manifest loading
+    - model loading
+
+- `figures/`
+  - Overview assets used in the README preview.
+
+## Environment
+
+The code expects the same Python environment used in the original repository:
+
+- `torch`
+- `transformers`
+- `numpy`
+- `scikit-learn`
+- `accelerate` for `train_prism.py`
+- See [requirements.txt](./requirements.txt) for the minimal pip package list.
+
+LLaDA checkpoints and tokenizers are not bundled here.
+
+## Attack workflow
+
+### 1. Train or load a PRISM selector
+
+If you already have a selector checkpoint, you can skip training.
+
+Example:
 
 ```bash
 python jump/train_prism.py \
   --base-model GSAI-ML/LLaDA-8B-Base \
   --tokenizer-path external/llada_8b_base_tokenizer \
   --train-text-path path/to/train.jsonl \
-  --out-dir outputs/prism \
+  --out-dir outputs/prism_c4 \
   --epochs 1 \
   --batch-size 4 \
   --grad-accum 2 \
@@ -51,21 +96,16 @@ python jump/train_prism.py \
   --lora-dropout 0.1
 ```
 
-Main output:
+### 2. Run the JUMP attack
 
-```text
-outputs/prism/checkpoint_best.pt
-outputs/prism/summary.json
-```
-
-## Run JUMP
+Example:
 
 ```bash
 python jump/eval_jump.py \
   --model_path GSAI-ML/LLaDA-8B-Base \
   --tokenizer_path external/llada_8b_base_tokenizer \
   --target_model_path path/to/target/checkpoint-80 \
-  --prism_checkpoint outputs/prism/checkpoint_best.pt \
+  --prism_checkpoint path/to/prism_checkpoint.pt \
   --target_backbone path/to/target/checkpoint-80 \
   --reference_backbone none \
   --eval_data path/to/eval_manifest.json \
@@ -77,41 +117,30 @@ python jump/eval_jump.py \
   --fixed_huber_clip_values 0.4054651081081644
 ```
 
-Typical setting:
+Typical retained main setting:
 
-```text
-selection_mode = quality_bot
-selected_k      = 64
-aggregation     = clipped mean target/reference gap
-clip value      = log(1.5)
-```
+- selector: `quality_bot`
+- selected-token budget: `K = 64`
+- aggregation: clipped mean target/reference gap
+- clipping threshold: `c = log(1.5)`
 
-## Expected inputs
+## Inputs
 
-`eval_jump.py` expects an evaluation manifest in the existing `sample_groups` format, with member and non-member examples already defined.
+The evaluator expects an evaluation manifest in the repository's existing `sample_groups` format, with member and non-member examples already defined.
 
 ## Outputs
 
-The evaluator writes results under `--output_dir`, including:
+The attack evaluator writes:
 
 - `summary.json`
 - per-feature metrics
-- optional selector/sample diagnostics
+- optional per-sample diagnostics when enabled
 
-## Repository layout
+under the directory passed to `--output_dir`.
 
-```text
-jump/
-├── eval_jump.py              # attack evaluation entrypoint
-├── train_prism.py            # PRISM training entrypoint
-├── core/
-│   ├── attack/               # JUMP scoring, masking, aggregation, runner
-│   ├── selection/            # selector features and diagnostics
-│   ├── training/             # PRISM training pipeline
-│   ├── shared/               # metrics, manifests, model loading
-│   └── prism_utils.py        # PRISM head, LoRA, checkpoint helpers
-├── overview.png
-├── overview.pdf
-├── requirements.txt
-└── README.md
-```
+## Notes
+
+- The top-level files are intentionally short wrappers.
+- The implementation is split into `attack/`, `selection/`, `training/`, and `shared/` modules so the code is easier to browse.
+- These scripts are lightly cleaned copies of the repository's main attack code.
+- Paths to checkpoints, manifests, and tokenizers still need to be supplied by the user.
