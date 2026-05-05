@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+import argparse
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base-model", required=True)
+    parser.add_argument("--tokenizer-path", default=None)
+    parser.add_argument("--backbone-checkpoint", default=None)
+    parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--train-text-path", required=True)
+    parser.add_argument("--val-text-path", default=None)
+    parser.add_argument("--text-field", default="text")
+    parser.add_argument("--max-train-samples", type=int, default=0)
+    parser.add_argument("--max-val-samples", type=int, default=0)
+    parser.add_argument("--val-fraction", type=float, default=0.05)
+    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--grad-accum", type=int, default=4)
+    parser.add_argument("--max-length", type=int, default=512)
+    parser.add_argument("--lr", type=float, default=2e-4)
+    parser.add_argument("--weight-decay", type=float, default=0.0)
+    parser.add_argument("--num-supervised-positions", type=int, default=8)
+    parser.add_argument("--lambda-mdm", type=float, default=0.0)
+    parser.add_argument("--exact-dev-examples", type=int, default=0)
+    parser.add_argument("--exact-dev-batch-size", type=int, default=8)
+    parser.add_argument("--lora-rank", type=int, default=0)
+    parser.add_argument("--lora-alpha", type=float, default=16.0)
+    parser.add_argument("--lora-dropout", type=float, default=0.0)
+    parser.add_argument("--precision", choices=("bf16", "fp16", "no"), default="bf16")
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=101)
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--save-every-epoch", action="store_true")
+    return parser.parse_args()
